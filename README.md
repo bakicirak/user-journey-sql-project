@@ -30,3 +30,6 @@ The expected output must contain the following columns:
 - Combine all visited pages (per session) into one **hyphen-separated string**.
 - Resulting user journeys are saved **per session**, **per user**.
 
+
+> **Note:** The database file is too large to be included in this repository.
+
