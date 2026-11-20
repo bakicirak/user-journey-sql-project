@@ -1,35 +1,43 @@
-# 🧭 Extracting User Journey Data Using SQL
+# User Journey Extraction for Paying Users (SQL)
 
-## 🧠 Case Description
+**Business question:** Which page paths do users follow before they buy a subscription, and what does that tell us about how pages like *Pricing*, *Courses* and *Checkout* support conversion?
 
-SQL is often just used to fetch raw data from data storage that is later transferred to other software for preprocessing. But this programming language can do more than select data from a table.
+This project builds the **analysis-ready dataset** for that question: one row per user and session, with the ordered page path a paying user took *before* their first purchase. It is the standard first step for funnel, path and attribution analysis. Doing the cleaning in SQL keeps the logic reproducible and close to the warehouse.
 
-This project centers around creating a customer journey data extract as the starting point for later analysis. Here, “user journey” refers to the steps each user goes through while exploring the product or platform before purchasing.
+**Stack:** MySQL 8 · CTEs · window functions · `GROUP_CONCAT` · ~1.6 M front-end interactions, ~246 K visitors, ~3.5 K purchases
 
-The context is an online subscription-based company offering monthly, quarterly, and annual subscription plans. Using only SQL, we consider all users that purchased a plan and aggregate all visited pages into a sequence string. This user journey will be analyzed in a different project.
+---
 
-## 🎯 Objective
+## Output
 
-Write a SQL query to extract the user journey of paying users by aggregating all visited pages in a session into a single string, ordered by time, and export the result as a CSV.
+| user_id | session_id | subscription_type | user_journey |
+|---|---|---|---|
+| 1234 | 98765 | Annual | `Homepage-Courses-Pricing-Checkout` |
 
-## 📄 Data Requirements
+## Business rules applied
 
-The expected output must contain the following columns:
+| Rule | Why it matters |
+|---|---|
+| First **paid** purchase per user (`ROW_NUMBER`), in Q1 2023 | Renewals and upgrades must not put a user in the wrong cohort or move the "before purchase" cut-off |
+| `purchase_price > 0` | Removes test accounts that would distort conversion paths |
+| Only page views **before** the first purchase | The journey describes the decision process, not activity after purchase |
+| URL → alias mapping ([`URL_Aliases.xlsx`](URL_Aliases.xlsx)) | Turns thousands of URLs into ~17 page types that stakeholders can read |
+| `group_concat_max_len` raised | MySQL silently cuts strings at 1,024 characters by default, which would truncate long journeys |
 
-- `user_id`
-- `session_id`
-- `subscription_type`
-- `user_journey`
+## How this dataset is used next
 
-## 📝 Project Requirements
+- **Path analysis:** the most common paths into Checkout, and how often *Pricing* appears before a purchase.
+- **Page influence:** for each page, the share of converting sessions it appears in, compared by plan type (Monthly, Quarterly, Annual).
+- **Journey length:** sessions and pages before purchase as an indicator of friction.
+- **Coupon impact:** how many paths go through *Coupon* and whether they lead to annual plans.
 
-- Only include users who made their **first purchase** between **January 1 and March 31, 2023 (Q1 2023)**.
-- Exclude any test users (those who paid **$0**).
-- Only include **page visits before the purchase timestamp**.
-- Replace full page URLs with **short aliases** (provided in the Excel file).
-- Combine all visited pages (per session) into one **hyphen-separated string**.
-- Resulting user journeys are saved **per session**, **per user**.
+## Files
 
+| File | Content |
+|---|---|
+| [`user_journey.sql`](user_journey.sql) | Full extraction query |
+| [`URL_Aliases.xlsx`](URL_Aliases.xlsx) | URL → page alias mapping |
 
-> **Note:** The database file is too large to be included in this repository.
+> The source database (~1.6 M rows) is too large for this repository.
 
+*Dataset: 365 Data Science, used as a guided case study.*
